@@ -1,6 +1,8 @@
 import { useHistoryStore } from "../../stores/historyStore";
+import { useT } from "../../i18n";
 
 export default function History() {
+  const t = useT();
   const items = useHistoryStore((s) => s.items);
 
   if (items.length === 0) return null;
@@ -8,7 +10,7 @@ export default function History() {
   return (
     <div>
       <h3 className="text-[11px] font-semibold text-[#94A3B8] dark:text-neutral-500 uppercase tracking-wider mb-2">
-        Recent
+        {t.history.recent}
       </h3>
       <div className="space-y-2 max-h-40 overflow-y-auto">
         {items.slice(0, 5).map((item) => (
