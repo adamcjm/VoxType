@@ -19,9 +19,7 @@ export interface LlmConfig {
 }
 
 export interface HotkeyConfig {
-  /** macOS key (Fn by default) */
   macos: string;
-  /** Windows/Linux key (Right Alt by default) */
   other: string;
 }
 
@@ -47,19 +45,74 @@ export interface SettingsState {
   setTheme: (theme: "light" | "dark" | "system") => void;
 }
 
+// Provider-specific defaults
+const STT_DEFAULTS: Record<SttConfig["provider"], Pick<SttConfig, "baseUrl" | "model">> = {
+  groq: {
+    baseUrl: "https://api.groq.com/openai/v1",
+    model: "whisper-large-v3-turbo",
+  },
+  openai: {
+    baseUrl: "https://api.openai.com/v1",
+    model: "whisper-1",
+  },
+  deepgram: {
+    baseUrl: "https://api.deepgram.com/v1",
+    model: "nova-2",
+  },
+  local: {
+    baseUrl: "http://localhost:8080",
+    model: "ggml-small.bin",
+  },
+  custom: {
+    baseUrl: "",
+    model: "whisper-1",
+  },
+};
+
+const LLM_DEFAULTS: Record<LlmConfig["provider"], Pick<LlmConfig, "baseUrl" | "model">> = {
+  openai: {
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o-mini",
+  },
+  deepseek: {
+    baseUrl: "https://api.deepseek.com/v1",
+    model: "deepseek-chat",
+  },
+  anthropic: {
+    baseUrl: "https://api.anthropic.com/v1",
+    model: "claude-3-haiku-20240307",
+  },
+  gemini: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    model: "gemini-2.0-flash",
+  },
+  groq: {
+    baseUrl: "https://api.groq.com/openai/v1",
+    model: "llama-3.3-70b-versatile",
+  },
+  ollama: {
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3",
+  },
+  custom: {
+    baseUrl: "",
+    model: "",
+  },
+};
+
 const defaultStt: SttConfig = {
   provider: "groq",
-  baseUrl: "https://api.groq.com/openai/v1",
+  baseUrl: STT_DEFAULTS.groq.baseUrl,
   apiKey: "",
-  model: "whisper-large-v3-turbo",
+  model: STT_DEFAULTS.groq.model,
   language: "zh",
 };
 
 const defaultLlm: LlmConfig = {
   provider: "deepseek",
-  baseUrl: "https://api.deepseek.com/v1",
+  baseUrl: LLM_DEFAULTS.deepseek.baseUrl,
   apiKey: "",
-  model: "deepseek-chat",
+  model: LLM_DEFAULTS.deepseek.model,
   temperature: 0.3,
   maxTokens: 4096,
   customPrompt: "",
@@ -86,9 +139,28 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   setOpen: (open) => set({ open }),
 
-  setStt: (stt) => set((s) => ({ stt: { ...s.stt, ...stt } })),
+  setStt: (stt) =>
+    set((s) => {
+      const merged = { ...s.stt, ...stt };
+      // Auto-fill defaults when provider changes
+      if (stt.provider) {
+        const defaults = STT_DEFAULTS[stt.provider];
+        if (!stt.baseUrl) merged.baseUrl = defaults.baseUrl;
+        if (!stt.model) merged.model = defaults.model;
+      }
+      return { stt: merged };
+    }),
 
-  setLlm: (llm) => set((s) => ({ llm: { ...s.llm, ...llm } })),
+  setLlm: (llm) =>
+    set((s) => {
+      const merged = { ...s.llm, ...llm };
+      if (llm.provider) {
+        const defaults = LLM_DEFAULTS[llm.provider];
+        if (!llm.baseUrl) merged.baseUrl = defaults.baseUrl;
+        if (!llm.model) merged.model = defaults.model;
+      }
+      return { llm: merged };
+    }),
 
   setHotkey: (hotkey) =>
     set((s) => ({ hotkey: { ...s.hotkey, ...hotkey } })),
