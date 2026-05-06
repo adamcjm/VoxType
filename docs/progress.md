@@ -40,6 +40,23 @@
 - [x] Git repository initialized with 2 commits
 - [ ] Push to GitHub (requires `gh auth login`)
 
+## S3: Keyboard Output
+
+### Completed
+- [x] enigo keyboard simulation: `type_text()` character-by-character
+- [x] `simulate_paste_keystroke()` — Cmd+V (macOS) / Ctrl+V (Win/Linux)
+- [x] Clipboard paste with save/restore (primary output, bypasses IME)
+- [x] Output Manager: `write_text()` with clipbord-first fallback strategy
+- [x] IME detection: macOS env var, Linux env vars, Windows placeholder
+- [x] Pipeline integrated with `output::write_text()`
+- [x] **3 new tests — 20 total, all passed**
+- [x] Rust: 0 errors, 0 warnings
+
+### Next Phase
+S4: Capsule UI — Floating overlay with waveform animation, real-time transcript, error states
+
+---
+
 ## S2: STT Integration
 
 ### Completed

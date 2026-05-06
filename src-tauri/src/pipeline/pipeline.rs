@@ -35,7 +35,7 @@ pub async fn run_pipeline(
 
     // Step 3: Output - type at cursor
     tracing::info!("Pipeline: Outputting text");
-    output::clipboard::paste_with_clipboard(&final_text).await?;
+    output::write_text(&final_text).await?;
 
     Ok((raw_text, final_text))
 }
