@@ -1,6 +1,6 @@
 # VoxType Architecture
 
-## 1. System Overview
+## System Overview
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -9,84 +9,84 @@
 │  ┌──────────────────────────┐   ┌───────────────────────────────┐│
 │  │    React/TS Frontend     │   │        Rust Backend            ││
 │  │                          │   │                               ││
-│  │  Floating Capsule        │◄──┤  Hotkey Manager               ││
-│  │  Settings Panel          │   │  Audio Pipeline                ││
-│  │  History Panel           │   │  STT Providers                 ││
-│  │  System Tray Menu        │   │  LLM Providers                 ││
-│  │                          │   │  Output Manager                ││
-│  │                          │   │  Config / History Store        ││
+│  │  Capsule Window          │   │  Hotkey Manager               ││
+│  │   → Recording indicator  │◄──┤   → CGEventTap (macOS Fn)     ││
+│  │   → Waveform + timer     │   │  Audio Pipeline               ││
+│  │   → Transcript preview   │   │   → cpal capture + VAD        ││
+│  │                          │   │  STT Providers                ││
+│  │  Main Window             │   │   → Groq/Deepgram/OpenAI/     ││
+│  │   → Settings (sidebar)   │   │     Local/Custom              ││
+│  │   → History list         │   │  LLM Providers                ││
+│  │   → i18n (zh-CN/en-US)   │   │   → OpenAI-compat API         ││
+│  │                          │   │  Output Manager               ││
+│  │  System Tray             │   │   → Clipboard paste + restore  ││
+│  │                          │   │  Config Store (~/.VoxType/)   ││
+│  │                          │   │  History Store (SQLite)       ││
+│  │                          │   │  Model Manager (Whisper DL)   ││
 │  └──────────────────────────┘   └───────────────────────────────┘│
-│                                                                   │
-│  Window 1: "capsule" - Always-on-top, no decorations, transparent │
-│  Window 2: "main"    - Settings & history, standard window        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Data Flow Pipeline
+## Window Architecture
+
+Two separate webview windows with independent entry points:
+
+| Window | Label | Entry | Content | Properties |
+|--------|-------|-------|---------|------------|
+| Capsule | `capsule` | `capsule.html` → `capsule.tsx` | Recording pill overlay | decorations:false, alwaysOnTop, transparent |
+| Main | `main` | `index.html` → `App.tsx` | Settings + History + idle launcher | Standard window, hidden by default |
+
+## Data Flow Pipeline
 
 ```
-User presses hotkey (Fn / Right Alt)
+Fn key (keycode 63)
+  │
+  ├→ CGEventTap intercepts → consume event (block emoji) → emit "hotkey:toggle"
   │
   ▼
-┌──────────────┐
-│ Audio Capture │  cpal microphone stream → WAV buffer
-└──────┬───────┘
+App.tsx receives event → toggle_recording command
+  │
+  ├─ if idle: AudioCapture.start() → microphone stream → buffer
+  │   └─ Capsule shows: red dot + waveform + timer
+  │
+  └─ if recording: AudioCapture.stop() → get samples
        │
-  ┌────▼───────┐
-  │    VAD      │  Voice Activity Detection → skip silence
-  └────┬───────┘
+       ▼
+     VAD check (has_speech?) ─ No → "No speech detected"
+       │ Yes
+       ▼
+     Preprocess (noise gate + gain normalize)
        │
-  ┌────▼───────┐
-  │ Preprocess  │  Noise reduction, gain normalization
-  └────┬───────┘
+       ▼
+     Encode to WAV (16kHz, mono, i16)
        │
-  ┌────▼───────┐
-  │ STT Provider│  Local Whisper or Cloud API (Groq/OpenAI/Deepgram)
-  └────┬───────┘
-       │ raw text
-  ┌────▼───────┐
-  │ LLM Provider│  Polish: remove fillers, fix punctuation, translate
-  └────┬───────┘
-       │ polished text
-  ┌────▼───────┐
-  │   Output    │  Clipboard paste (CMD+V) with clipboard restore
-  └────┬───────┘
+       ▼
+     STT Provider transcribe ─ Error → show error in Capsule
+       │ OK
+       ▼
+     Raw transcript text
        │
-  ┌────▼───────┐
-  │   History   │  Save to SQLite
-  └────────────┘
+       ▼
+     LLM Provider polish (if API key configured)
+       │
+       ▼
+     Final polished text
+       │
+       ▼
+     Clipboard paste (set → Cmd+V → restore original)
+       │
+       ▼
+     Save to History (SQLite)
+       │
+       ▼
+     Capsule shows: ✓ "Pasted" → auto-dismiss 2s
 ```
 
-## 3. Module Architecture
+## Provider Architecture
 
-### 3.1 Rust Backend (`src-tauri/src/`)
+### STT Providers
 
-| Module | Path | Responsibility |
-|--------|------|---------------|
-| `audio` | `audio/` | Microphone capture, VAD, preprocessing |
-| `stt` | `stt/` | STT provider abstraction and implementations |
-| `llm` | `llm/` | LLM provider abstraction and prompt management |
-| `output` | `output/` | Keyboard simulation, clipboard management, IME bypass |
-| `pipeline` | `pipeline/` | End-to-end processing orchestration |
-| `hotkey` | `hotkey/` | Global hotkey registration per platform |
-| `config` | `config/` | Configuration types and defaults |
-| `history` | `history/` | SQLite-based transcription history |
-| `commands` | `commands/` | Tauri command handlers (Rust ↔ JS bridge) |
-
-### 3.2 React Frontend (`src/`)
-
-| Module | Path | Responsibility |
-|--------|------|---------------|
-| `capsule` | `components/capsule/` | Floating recording indicator with transcript preview |
-| `settings` | `components/settings/` | Full settings panel with STT/LLM/hotkey config |
-| `history` | `components/history/` | Past transcriptions list with search |
-| `common` | `components/common/` | Shared UI components (Toast, Dialog) |
-| `stores` | `stores/` | Zustand state stores (recording, settings, history) |
-| `hooks` | `hooks/` | React hooks for Tauri IPC |
-
-## 4. Provider Abstraction
-
-### 4.1 STT Provider Interface
+All implement `SttProvider` trait:
 
 ```rust
 #[async_trait]
@@ -94,50 +94,55 @@ pub trait SttProvider: Send + Sync {
     fn name(&self) -> &str;
     fn is_available(&self) -> bool;
     fn supported_languages(&self) -> Vec<&str>;
-    async fn transcribe(
-        &self,
-        audio_data: &[u8],
-        format: AudioFormat,
-        language: Option<&str>,
-    ) -> Result<String>;
+    async fn transcribe(&self, audio: &[u8], format: AudioFormat, lang: Option<&str>) -> Result<String>;
 }
 ```
 
-**Implementations:**
-- `GroqProvider` - Groq Whisper API (free tier available)
-- `OpenAiWhisperProvider` - OpenAI Whisper API + custom endpoints
-- `DeepgramProvider` - Deepgram API
-- `LocalWhisperProvider` - Local whisper.cpp via subprocess
+| Implementation | API Format | Endpoint |
+|---------------|-----------|----------|
+| GroqProvider | OpenAI-compat multipart/form-data | `/audio/transcriptions` |
+| OpenAiWhisperProvider | OpenAI-compat multipart/form-data | `/audio/transcriptions` |
+| DeepgramProvider | Raw audio body | `/listen?model=...` |
+| LocalWhisperProvider | whisper.cpp subprocess | local binary |
+| Custom (via OpenAiWhisperProvider) | OpenAI-compat | user-defined |
 
-### 4.2 LLM Provider Interface
+### LLM Providers
 
-```rust
-#[async_trait]
-pub trait LlmProvider: Send + Sync {
-    fn name(&self) -> &str;
-    fn is_available(&self) -> bool;
-    async fn polish(&self, text: &str, mode: PolishMode) -> Result<String>;
-}
+All use OpenAI-compatible chat completions via `OpenAiCompatProvider`:
+
+```
+POST {base_url}/chat/completions
+Authorization: Bearer {api_key}
+{ "model": "...", "messages": [system_prompt, user_text] }
 ```
 
-All providers use OpenAI-compatible chat completions API. The `polish` method sends a system prompt for text cleanup and returns the polished result.
+**Prompt modes**: Cleanup, Translate, Format — with custom user prompt override.
 
-## 5. Platform-Specific Design
+**Retry logic**: Exponential backoff (2 retries), no retry on 401/403/429.
 
-| Feature | macOS | Windows | Linux |
-|---------|-------|---------|-------|
-| Default Hotkey | Fn | Right Alt | Right Alt |
-| Keyboard Output | CGEventPost | SendInput | X11/xdotool |
-| Clipboard | arboard | arboard | arboard |
-| Audio | cpal (CoreAudio) | cpal (WASAPI) | cpal (PulseAudio/PipeWire) |
-| Keychain Storage | Security framework | Credential Manager | Secret Service |
-| Config Path | `~/.VoxType/` | `~/.VoxType/` | `~/.VoxType/` |
+## Data Storage
 
-## 6. Security Design
+```
+~/.VoxType/
+├── config.json     # AppConfig (STT/LLM provider, model, API key, hotkey)
+├── history.db      # SQLite (id, raw_text, final_text, provider, mode, created_at)
+└── models/          # Whisper models (ggml-small.bin, ggml-medium.bin, etc.)
+```
 
-- API keys stored in platform keychain (not plain text)
-- Local STT runs entirely offline on device
-- All cloud requests go directly from user machine to provider APIs
-- No VoxType servers involved in BYOK mode
-- Clipboard is saved and restored during paste operations
-- Application permissions clearly scoped (microphone, accessibility, keyboard)
+**Config loading priority**: `.env` → `config.json` → code defaults
+
+## IME Bypass Strategy
+
+1. Primary: Clipboard paste (set text → Cmd+V → restore original) — bypasses IME entirely
+2. Fallback: enigo keyboard simulation (character-by-character Unicode input)
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Memory (idle) | ~25MB |
+| Memory (recording) | ~40MB |
+| CPU (recording) | ~2% |
+| STT latency (Groq) | ~200ms |
+| LLM polish (DeepSeek) | ~500ms |
+| End-to-end | ~1-2s |

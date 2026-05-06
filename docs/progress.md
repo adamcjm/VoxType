@@ -4,118 +4,37 @@
 
 ## Summary
 
-| Phase | Status | Start Date | End Date | Tests |
-|-------|--------|------------|----------|-------|
-| S0: Scaffold | Completed | 2026-05-06 | 2026-05-06 | - |
-| S1: Audio + Hotkey | Completed | 2026-05-06 | 2026-05-06 | 14 |
-| S2: STT Integration | Completed | 2026-05-06 | 2026-05-06 | 17 |
-| S3: Keyboard Output | Completed | 2026-05-06 | 2026-05-06 | 20 |
-| S4: Capsule UI | Completed | 2026-05-06 | 2026-05-06 | 20 |
-| S5: LLM Polish | Completed | 2026-05-06 | 2026-05-06 | 25 |
-| S6: Settings + History | Completed | 2026-05-06 | 2026-05-06 | 28 |
-| S7: Local Whisper + Release | Completed | 2026-05-06 | 2026-05-06 | 28 |
+| Phase | Status | Tests | Highlights |
+|-------|--------|-------|------------|
+| S0: Scaffold | ✅ | - | Tauri v2 + React 19 + Rust 骨架 |
+| S1: Audio + Hotkey | ✅ | 14 | cpal 录音、VAD、降噪、Fn 键 |
+| S2: STT Integration | ✅ | 17 | Groq/OpenAI/Deepgram/Local/Custom API |
+| S3: Keyboard Output | ✅ | 20 | enigo 模拟、剪贴板粘贴、IME 绕过 |
+| S4: Capsule UI | ✅ | 20 | 悬浮胶囊、波形动画、状态指示 |
+| S5: LLM Polish | ✅ | 25 | 多场景 Prompt、重试、token 追踪 |
+| S6: Settings + History | ✅ | 28 | JSON 持久化、SQLite 历史 |
+| S7: Local Whisper + Release | ✅ | 28 | whisper.cpp、模型下载、打包配置 |
 
-## S7: Local Whisper + Release
+## Post-Phase Enhancements
 
-### Completed
-- [x] Local Whisper provider: whisper.cpp subprocess invocation
-- [x] Auto-detect binary (bundled or $PATH) and model files
-- [x] Model manager: 5 sizes, HuggingFace download with progress
-- [x] Model commands: list, download, delete, exists
-- [x] Bundle config: macOS/Win/Linux packaging with updater endpoint
-- [x] Platform-standard storage paths (config, data, models)
-- [x] **28 tests, 28 passed, 0 failed**
-- [x] Rust: 0 errors, 0 warnings
-- [x] Frontend: build OK
+| Enhancement | Description |
+|-------------|-------------|
+| CGEventTap Fn Key | macOS CGEventTap 拦截 Fn 键，阻止 emoji 弹窗，toggle 录音 |
+| Typeless UI Redesign | 圆润 pill 胶囊、侧边栏导航 Settings、品牌色重构 |
+| i18n Multi-language | zh-CN / en-US，系统语言自动检测，Settings 手动切换 |
+| Model Dropdown | 填入 API Key 自动 GET /models 拉取模型列表，下拉选择 |
+| Unified ~/.VoxType/ | 所有数据统一到一个跨平台路径 |
+| Dual-window Architecture | Capsule 窗口 + Main 窗口独立入口 |
+| .env Support | 开发者用 .env 跳过 Settings |
+| Onboarding Flow | 首次启动自动弹出 Settings 引导配置 |
 
----
+## Final State
 
-## S6: Settings + History
-
-### Completed
-- [x] Created Tauri v2 project with React+TS template
-- [x] Installed frontend dependencies: Zustand, Framer Motion, Lucide React, date-fns
-- [x] Installed Tailwind CSS v4 with @tailwindcss/vite
-- [x] Installed Tauri plugins: store, opener, shell
-- [x] Configured Rust Cargo.toml: cpal, enigo, reqwest, arboard, hound, async-trait, tokio
-- [x] Created complete directory structure (Rust modules + React components)
-- [x] Defined core types: AppConfig, SttConfig, LlmConfig, HotkeyConfig, TranslateConfig
-- [x] Implemented error types: VoxTypeError with thiserror
-- [x] Implemented STP provider trait + Groq, OpenAI, Deepgram, Local stubs
-- [x] Implemented LLM provider trait + OpenAI-compatible implementation with prompts
-- [x] Implemented pipeline orchestration (STT → LLM → Output flow)
-- [x] Implemented output module: clipboard paste with restore, IME bypass strategy
-- [x] Created React stores: recordingStore, settingsStore, historyStore
-- [x] Created React components: Capsule (floating), Settings (full panel), History (list)
-- [x] Configured Tailwind CSS with VoxType brand colors and animations
-- [x] Created comprehensive docs directory structure (12 documents)
-- [x] Created AGENTS.md for AI development context
-- [x] Rust backend: 0 errors, 0 warnings
-- [x] Frontend: builds successfully
-- [x] Git repository initialized with 2 commits
-- [ ] Push to GitHub (requires `gh auth login`)
-
-## S3: Keyboard Output
-
-### Completed
-- [x] enigo keyboard simulation: `type_text()` character-by-character
-- [x] `simulate_paste_keystroke()` — Cmd+V (macOS) / Ctrl+V (Win/Linux)
-- [x] Clipboard paste with save/restore (primary output, bypasses IME)
-- [x] Output Manager: `write_text()` with clipbord-first fallback strategy
-- [x] IME detection: macOS env var, Linux env vars, Windows placeholder
-- [x] Pipeline integrated with `output::write_text()`
-- [x] **3 new tests — 20 total, all passed**
-- [x] Rust: 0 errors, 0 warnings
-
-### Next Phase
-S4: Capsule UI — Floating overlay with waveform animation, real-time transcript, error states
-
----
-
-## S2: STT Integration
-
-### Completed
-- [x] Shared HTTP helper: `transcribe_openai_compat()` for OpenAI-compatible APIs
-- [x] Groq Provider: real Whisper API call via multipart/form-data
-- [x] OpenAI Whisper Provider: real API call + Custom endpoint support
-- [x] Deepgram Provider: native API format with smart_format
-- [x] AudioFormat: mime_type() and extension() methods
-- [x] Error handling: HTTP errors, JSON parse errors, auth errors
-- [x] **3 new mock HTTP tests (wiremock) — 17 total, all passed**
-- [x] Rust: 0 errors, 0 warnings
-- [x] Frontend: builds successfully
-
-### Next Phase
-S3: Keyboard Output — Implement enigo keyboard simulation with IME bypass for real text input
-
----
-
-## S1: Audio Capture + Hotkey
-
-### Completed
-- [x] AudioCapture: cpal-based microphone capture at 16kHz mono PCM
-- [x] Dedicated audio thread to isolate non-Send cpal::Stream (macOS CoreAudio)
-- [x] Channel-based start/stop commands (mpsc)
-- [x] WAV encoding: f32 → i16 PCM via hound crate
-- [x] VAD: energy-based speech detection with configurable threshold
-- [x] VAD: speech segment detection with min speech/silence filtering
-- [x] Audio preprocessing: noise gate + gain normalization
-- [x] Device enumeration: list_input_devices() with AudioDeviceInfo
-- [x] Hotkey infrastructure: platform-specific key descriptions
-- [x] Pipeline refactored to free function (Send-safe async)
-- [x] AppState simplified: config + audio_capture only
-- [x] All async Tauri commands are Send-safe
-- [x] Recording commands: start_recording, stop_recording, list_audio_devices
-- [x] Integrated VAD gate before STT pipeline
-- [x] Integrated audio preprocessing before STT
-- [x] **14 tests, 14 passed, 0 failed**
-- [x] Rust: 0 errors, 0 warnings
-- [x] Frontend: builds successfully
-
-### Pending (deferred to later)
-- [ ] OS-level global hotkey (CGEventTap/RegisterHotKey/XGrabKey)
-- [ ] Hotkey Tauri event emission to frontend
-
----
-
-## S0: Project Scaffold
+| Metric | Value |
+|--------|-------|
+| Rust | 0 errors, 0 warnings |
+| Frontend | Build OK |
+| Tests | 28/28 passed |
+| Commits | 18 |
+| GitHub | [adamcjm/VoxType](https://github.com/adamcjm/VoxType) |
+| Docs | 12 files |

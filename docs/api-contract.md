@@ -1,107 +1,81 @@
 # API Contract: Rust Backend ↔ React Frontend
 
-Communication via Tauri v2 IPC (invoke/events).
-
-## Tauri Commands (Rust → exposed to frontend)
+## Tauri Commands
 
 ### Recording
 
 ```typescript
-// Start recording from default microphone
 invoke("start_recording"): Promise<void>
-
-// Stop recording, transcribe, polish, output
-invoke("stop_recording"): Promise<string> // returns final text
+invoke("stop_recording"): Promise<string>  // returns final text
+invoke("toggle_recording"): Promise<string> // returns "recording" or final text
+invoke("list_audio_devices"): Promise<AudioDeviceInfo[]>
 ```
 
 ### Settings
 
 ```typescript
-// Get current settings
 invoke("get_settings"): Promise<AppConfig>
-
-// Save settings (also persists to disk)
 invoke("save_settings", { config: AppConfig }): Promise<void>
+invoke("needs_onboarding"): Promise<boolean>
 ```
 
 ### History
 
 ```typescript
 interface HistoryItem {
-  id: string;
-  raw_text: string;
-  final_text: string;
-  stt_provider: string;
-  llm_provider: string;
-  app_name: string;
-  duration_ms: number;
-  mode: "cleanup" | "translate" | "format";
-  created_at: string; // ISO 8601
+  id: string; raw_text: string; final_text: string;
+  stt_provider: string; llm_provider: string; app_name: string;
+  duration_ms: number; mode: string; created_at: string;
 }
 
-invoke("get_history"): Promise<HistoryItem[]>
+invoke("get_history", { search?: string, limit?: number }): Promise<HistoryItem[]>
 invoke("add_history_item", { item: HistoryItem }): Promise<void>
 invoke("remove_history_item", { id: string }): Promise<void>
 ```
 
-### Clipboard
+### Model Fetching (NEW)
 
 ```typescript
-invoke("copy_to_clipboard", { text: string }): Promise<void>
-invoke("paste_text", { text: string }): Promise<void>
-```
-
-### Audio Devices (planned)
-
-```typescript
-interface AudioDevice {
-  name: string;
-  is_default: boolean;
+interface ModelInfo {
+  id: string;
+  display_name: string;
 }
 
-invoke("list_audio_devices"): Promise<AudioDevice[]>
-invoke("set_audio_device", { device_name: string }): Promise<void>
+// Fetch available models from STT provider
+invoke("fetch_stt_models", {
+  provider: string,    // "groq" | "openai" | "deepgram" | "local" | "custom"
+  baseUrl: string,     // API endpoint
+  apiKey: string       // Provider API key
+}): Promise<ModelInfo[]>
+
+// Fetch available models from LLM provider
+invoke("fetch_llm_models", {
+  baseUrl: string,
+  apiKey: string
+}): Promise<ModelInfo[]>
 ```
 
-### Models (planned)
+### Model Manager (Whisper)
 
 ```typescript
-invoke("download_whisper_model", { size: "small" | "medium" | "large" }): Promise<void>
-invoke("get_whisper_model_status"): Promise<{ size: string; downloaded: boolean }>
+invoke("list_models"): Promise<ModelStatus[]>
+invoke("download_model", { sizeStr: string }): Promise<string>
+invoke("delete_model", { sizeStr: string }): Promise<void>
+invoke("model_exists", { sizeStr: string }): Promise<boolean>
 ```
 
 ## Tauri Events (Rust → Frontend)
 
-### Recording State
-
 ```typescript
-enum RecordingState {
-  Idle = "recording:idle",
-  Recording = "recording:recording",
-  Transcribing = "recording:transcribing",
-  Polishing = "recording:polishing",
-  Done = "recording:done",
-  Error = "recording:error",
-}
+// Fn key toggle (macOS CGEventTap)
+listen("hotkey:toggle", () => { /* toggle recording */ })
 
-// Listen for state changes
-listen("recording:state", (event: Event<RecordingState>) => {...})
+// Recording state changes (future)
+listen("recording:state", (event: Event<State>) => {})
+listen("recording:transcript", (event: Event<{ text: string }>) => {})
 ```
 
-### Transcript Progress
-
-```typescript
-listen("recording:transcript", (event: Event<{ text: string }>) => {...})
-listen("recording:polished", (event: Event<{ text: string }>) => {...})
-```
-
-### Error Events
-
-```typescript
-listen("recording:error", (event: Event<{ code: string; message: string }>) => {...})
-```
-
-## Config Types (shared between frontend and backend)
+## Config Types
 
 ```typescript
 interface AppConfig {
@@ -114,10 +88,10 @@ interface AppConfig {
 
 interface SttConfig {
   provider: "groq" | "openai" | "deepgram" | "local" | "custom";
-  base_url: string;        // API endpoint
-  api_key: string;         // Stored in keychain
-  model: string;           // e.g. "whisper-large-v3-turbo"
-  language: string;        // Language hint (zh, en, ja, etc.)
+  base_url: string;
+  api_key: string;
+  model: string;
+  language: string;
 }
 
 interface LlmConfig {
@@ -125,34 +99,31 @@ interface LlmConfig {
   base_url: string;
   api_key: string;
   model: string;
-  temperature: number;     // 0.0 - 2.0
+  temperature: number;
   max_tokens: number;
   custom_prompt: string | null;
 }
 
 interface HotkeyConfig {
-  macos: string;           // e.g. "Fn"
-  other: string;           // e.g. "RightAlt"
+  macos: string;
+  other: string;
 }
 
 interface TranslateConfig {
   enabled: boolean;
-  source_lang: string;     // "auto" or language code
-  target_lang: string;     // e.g. "en", "zh"
+  source_lang: string;
+  target_lang: string;
 }
 ```
 
 ## Error Codes
 
-| Code | Description | User Message |
-|------|-------------|-------------|
-| `audio:device_not_found` | No microphone detected | "No microphone found. Please connect a microphone." |
-| `audio:permission_denied` | Mic access denied | "Microphone access denied. Check system permissions." |
-| `stt:api_error` | STT API returned error | "Speech recognition failed. Check your API key." |
-| `stt:timeout` | STT request timed out | "Speech recognition timed out. Try again." |
-| `stt:model_not_found` | Local model missing | "Whisper model not downloaded. Go to Settings." |
-| `llm:api_error` | LLM API returned error | "Text polishing failed. Check your API key." |
-| `llm:quota_exceeded` | API quota exceeded | "API quota exceeded. Try another provider." |
-| `output:permission_denied` | Accessibility not granted | "Grant Accessibility permission in System Settings." |
-| `hotkey:conflict` | Hotkey already in use | "Hotkey conflict. Choose another key." |
-| `unknown` | Unknown error | "Something went wrong. Please try again." |
+| Code | User Message |
+|------|-------------|
+| `audio:device_not_found` | "No microphone found" |
+| `audio:permission_denied` | "Microphone access denied" |
+| `stt:api_error` | "Speech recognition failed. Check API key" |
+| `stt:model_not_found` | "Whisper model not downloaded" |
+| `llm:api_error` | "Text polishing failed. Check API key" |
+| `output:permission_denied` | "Grant Accessibility permission" |
+| `hotkey:conflict` | "Hotkey already in use" |
