@@ -41,13 +41,13 @@ Implement offline speech recognition via whisper.cpp, model download management,
 - [x] `createUpdaterArtifacts: true`
 
 ### 5. Platform Storage
-Settings, history, and models all use platform-standard directories:
+Settings, history, and models all use a unified directory:
 
-| Platform | Config | Data/History | Models |
-|----------|--------|-------------|--------|
-| macOS | `~/Library/Application Support/com.voxtype.app/` | same | same |
-| Windows | `%APPDATA%/VoxType/` | same | same |
-| Linux | `$XDG_CONFIG_HOME/voxtype/` | `$XDG_DATA_HOME/voxtype/` | same |
+| Platform | Path |
+|----------|------|
+| macOS | `~/.VoxType/` |
+| Windows | `~/.VoxType/` |
+| Linux | `~/.VoxType/` |
 
 ## Build Results
 

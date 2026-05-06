@@ -59,11 +59,11 @@ cd VoxType
 # 2. Install dependencies
 pnpm install
 
-# 3. Configure API keys (edit config file)
-mkdir -p ~/Library/Application\ Support/com.voxtype.app
+# 3. Configure API keys (create config directory)
+mkdir -p ~/.VoxType
 ```
 
-Create `~/Library/Application Support/com.voxtype.app/config.json`:
+Create `~/.VoxType/config.json`:
 
 ```json
 {
@@ -688,9 +688,9 @@ Settings are persisted to `~/.VoxType/config.json` and reloaded on next launch.
 For team deployment, create a config template:
 
 ```bash
-mkdir -p ~/Library/Application\ Support/com.voxtype.app
+mkdir -p ~/.VoxType
 
-cat > ~/Library/Application\ Support/com.voxtype.app/config.json << 'EOF'
+cat > ~/.VoxType/config.json << 'EOF'
 {
   "stt": {
     "provider": "deepgram",

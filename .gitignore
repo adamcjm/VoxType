@@ -24,8 +24,8 @@ npm-debug.log*
 .env.*.local
 
 # VoxType local data
+.VoxType/
 config.json
-config.dev.json
 
 # OS files
 Thumbs.db

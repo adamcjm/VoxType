@@ -131,7 +131,7 @@ All providers use OpenAI-compatible chat completions API. The `polish` method se
 | Clipboard | arboard | arboard | arboard |
 | Audio | cpal (CoreAudio) | cpal (WASAPI) | cpal (PulseAudio/PipeWire) |
 | Keychain Storage | Security framework | Credential Manager | Secret Service |
-| Config Path | `~/.config/voxtype/` | `%APPDATA%/VoxType/` | `~/.config/voxtype/` |
+| Config Path | `~/.VoxType/` | `~/.VoxType/` | `~/.VoxType/` |
 
 ## 6. Security Design
 

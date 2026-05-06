@@ -11,10 +11,7 @@ Implement persistent configuration storage and SQLite-based transcription histor
 ### 1. Settings Persistence (`config/mod.rs`)
 - [x] `AppConfig::load()` — load from JSON file on disk
 - [x] `AppConfig::save()` — save to JSON file (pretty-printed)
-- [x] Platform-specific config paths:
-  - macOS: `~/Library/Application Support/com.voxtype.app/config.json`
-  - Windows: `%APPDATA%/VoxType/config.json`
-  - Linux: `$XDG_CONFIG_HOME/voxtype/config.json`
+- [x] Unified config path: `~/.VoxType/config.json` (macOS, Windows, Linux)
 - [x] Auto-creates config directory on first save
 
 ### 2. History Storage (`history/mod.rs`)
@@ -24,10 +21,7 @@ Implement persistent configuration storage and SQLite-based transcription histor
 - [x] `add()` — insert new entry
 - [x] `get_all()` — list with optional limit and full-text search (LIKE)
 - [x] `remove()` — delete by ID
-- [x] Platform-specific DB paths:
-  - macOS: `~/Library/Application Support/com.voxtype.app/history.db`
-  - Windows: `%APPDATA%/VoxType/history.db`
-  - Linux: `$XDG_DATA_HOME/voxtype/history.db`
+- [x] Unified DB path: `~/.VoxType/history.db` (macOS, Windows, Linux)
 
 ### 3. Pipeline Result (`pipeline/`)
 - [x] `PipelineResult` struct: raw_text, final_text, stt_provider, llm_provider, mode
