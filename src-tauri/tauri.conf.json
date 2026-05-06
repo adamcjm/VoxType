@@ -23,7 +23,7 @@
         "transparent": true,
         "shadow": false,
         "center": true,
-        "url": "/capsule"
+        "url": "/capsule.html"
       },
       {
         "label": "main",
@@ -32,7 +32,7 @@
         "height": 520,
         "center": true,
         "visible": false,
-        "url": "/main"
+        "url": "/"
       }
     ],
     "security": {
