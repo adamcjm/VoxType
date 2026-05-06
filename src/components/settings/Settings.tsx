@@ -1,277 +1,176 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSettingsStore } from "../../stores/settingsStore";
-import { X, Settings as SettingsIcon, Save } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { SettingsState } from "../../stores/settingsStore";
 
-export default function Settings() {
-  const open = useSettingsStore((s) => s.open);
-  const setOpen = useSettingsStore((s) => s.setOpen);
+export default function SettingsPanel() {
   const stt = useSettingsStore((s) => s.stt);
   const llm = useSettingsStore((s) => s.llm);
-  const hotkey = useSettingsStore((s) => s.hotkey);
   const translate = useSettingsStore((s) => s.translate);
   const setStt = useSettingsStore((s) => s.setStt);
   const setLlm = useSettingsStore((s) => s.setLlm);
-  const setHotkey = useSettingsStore((s) => s.setHotkey);
   const setTranslate = useSettingsStore((s) => s.setTranslate);
 
-  // Load settings from Rust backend on mount
+  const [activeTab, setActiveTab] = useState<"stt" | "llm" | "translate">("stt");
+  const [saved, setSaved] = useState(false);
+
   useEffect(() => {
-    invoke("get_settings")
-      .then((config) => {
-        const c = config as SettingsState;
-        setStt(c.stt);
-        setLlm(c.llm);
-        setHotkey(c.hotkey);
-        setTranslate(c.translate);
-      })
-      .catch(console.error);
+    invoke("get_settings").then((c) => {
+      const cfg = c as SettingsState;
+      setStt(cfg.stt); setLlm(cfg.llm); setTranslate(cfg.translate);
+    }).catch(() => {});
   }, []);
 
-  // Check if this is first launch
-  const [isOnboarding, setIsOnboarding] = useState(false);
-  useEffect(() => {
-    invoke("needs_onboarding")
-      .then((needs) => setIsOnboarding(needs as boolean))
-      .catch(() => {});
-  }, []);
+  const save = useCallback(async () => {
+    await invoke("save_settings", { config: { stt, llm, translate, hotkey: { macos:"Fn", other:"RightAlt" }, theme:"system" } });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }, [stt, llm, translate]);
 
-  // Save to Rust backend
-  const saveSettings = useCallback(async () => {
-    const config = { stt, llm, hotkey, translate, theme: "system" };
-    try {
-      await invoke("save_settings", { config });
-      setOpen(false);
-    } catch (e) {
-      console.error("Failed to save settings:", e);
-    }
-  }, [stt, llm, hotkey, translate]);
+  const close = () => getCurrentWindow().hide();
 
-  if (!open) return null;
+  const inputClass = "w-full px-3 py-2 bg-[#F8FAFC] dark:bg-neutral-800 border border-[#E2E8F0] dark:border-neutral-700 rounded-xl text-sm text-[#0F172A] dark:text-neutral-100 placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-400 transition-all";
+  const selectClass = inputClass;
+  const labelClass = "block text-[11px] font-semibold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider mb-1.5";
 
   return (
-    <div className="fixed inset-0 z-[9998] bg-black/40 flex items-center justify-center animate-fade-in">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-[640px] max-h-[85vh] overflow-hidden border border-neutral-200 dark:border-neutral-800">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center gap-2">
-            <SettingsIcon className="w-5 h-5 text-brand-500" />
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-              VoxType Settings
-            </h2>
-            {isOnboarding && (
-              <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300">
-                First Time Setup
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4 text-neutral-500" />
+    <div className="flex h-screen bg-[#FFFFFF] dark:bg-neutral-950">
+      {/* Sidebar */}
+      <div className="w-48 border-r border-[#F1F5F9] dark:border-neutral-800 flex flex-col shrink-0">
+        <div className="px-5 py-4 border-b border-[#F1F5F9] dark:border-neutral-800">
+          <span className="text-lg font-bold text-brand-500 tracking-tight">VoxType</span>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {[
+            { id: "stt" as const, label: "Speech", icon: "🎤" },
+            { id: "llm" as const, label: "AI Polish", icon: "✨" },
+            { id: "translate" as const, label: "Translate", icon: "🌐" },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer
+                ${activeTab === tab.id
+                  ? "bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400"
+                  : "text-[#64748B] dark:text-neutral-400 hover:bg-[#F8FAFC] dark:hover:bg-neutral-800"}`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="px-3 py-3 border-t border-[#F1F5F9] dark:border-neutral-800 space-y-2">
+          <button onClick={save} className="w-full px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-all cursor-pointer">
+            {saved ? "✓ Saved" : "Save"}
+          </button>
+          <button onClick={close} className="w-full px-4 py-2 text-sm text-[#94A3B8] dark:text-neutral-500 hover:text-[#64748B] dark:hover:text-neutral-400 transition-colors cursor-pointer">
+            Close
           </button>
         </div>
+      </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-8 overflow-y-auto max-h-[calc(85vh-120px)]">
-          {/* Welcome Banner */}
-          {isOnboarding && (
-            <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-900/50">
-              <p className="text-sm font-medium text-brand-800 dark:text-brand-300 mb-1">
-                Welcome to VoxType
-              </p>
-              <p className="text-xs text-brand-600 dark:text-brand-400 leading-relaxed">
-                Configure your Speech-to-Text and AI Polish providers below.
-                You'll need API keys — see the README for free registration links.
-              </p>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto px-8 py-8">
+          {activeTab === "stt" && (
+            <div className="space-y-5 animate-fade-in">
+              <div>
+                <h2 className="text-base font-semibold text-[#0F172A] dark:text-neutral-100 mb-4">Speech Recognition</h2>
+                <label className={labelClass}>Provider</label>
+                <select className={selectClass} value={stt.provider} onChange={e => setStt({ provider: e.target.value as any })}>
+                  <option value="groq">Groq (free)</option>
+                  <option value="deepgram">Deepgram</option>
+                  <option value="openai">OpenAI Whisper</option>
+                  <option value="local">Local Whisper (offline)</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>API Key</label>
+                <input type="password" className={inputClass} placeholder="Paste your API key…" value={stt.apiKey} onChange={e => setStt({ apiKey: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelClass}>Model</label>
+                <input type="text" className={inputClass} value={stt.model} onChange={e => setStt({ model: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelClass}>Language</label>
+                <select className={selectClass} value={stt.language} onChange={e => setStt({ language: e.target.value })}>
+                  <option value="zh">中文</option>
+                  <option value="en">English</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                  <option value="auto">Auto</option>
+                </select>
+              </div>
             </div>
           )}
 
-          {/* Speech Recognition */}
-          <section>
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
-               Speech Recognition
-            </h3>
-            <div className="space-y-3">
+          {activeTab === "llm" && (
+            <div className="space-y-5 animate-fade-in">
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  Provider
-                </label>
-                <select
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                  value={stt.provider}
-                  onChange={(e) => setStt({ provider: e.target.value as any })}
-                >
-                  <option value="groq">Groq (free tier)</option>
-                  <option value="openai">OpenAI Whisper</option>
-                  <option value="deepgram">Deepgram</option>
-                  <option value="local">Local Whisper (offline)</option>
-                  <option value="custom">Custom Endpoint</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                  placeholder="gsk_..."
-                  value={stt.apiKey}
-                  onChange={(e) => setStt({ apiKey: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  Model
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                  value={stt.model}
-                  onChange={(e) => setStt({ model: e.target.value })}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* AI Polish */}
-          <section>
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
-               AI Polish
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  Provider
-                </label>
-                <select
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                  value={llm.provider}
-                  onChange={(e) => setLlm({ provider: e.target.value as any })}
-                >
+                <h2 className="text-base font-semibold text-[#0F172A] dark:text-neutral-100 mb-4">AI Polish</h2>
+                <label className={labelClass}>Provider</label>
+                <select className={selectClass} value={llm.provider} onChange={e => setLlm({ provider: e.target.value as any })}>
                   <option value="deepseek">DeepSeek</option>
-                  <option value="openai">OpenAI (GPT-4o-mini)</option>
+                  <option value="openai">OpenAI</option>
                   <option value="groq">Groq</option>
                   <option value="gemini">Google Gemini</option>
                   <option value="ollama">Ollama (local)</option>
-                  <option value="custom">Custom Endpoint</option>
+                  <option value="custom">Custom</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                  placeholder="sk-..."
-                  value={llm.apiKey}
-                  onChange={(e) => setLlm({ apiKey: e.target.value })}
-                />
+                <label className={labelClass}>API Key</label>
+                <input type="password" className={inputClass} placeholder="Paste your API key…" value={llm.apiKey} onChange={e => setLlm({ apiKey: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                    Model
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                    value={llm.model}
-                    onChange={(e) => setLlm({ model: e.target.value })}
-                  />
+                  <label className={labelClass}>Model</label>
+                  <input type="text" className={inputClass} value={llm.model} onChange={e => setLlm({ model: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                    Temperature
-                  </label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400"
-                    min="0"
-                    max="2"
-                    step="0.1"
-                    value={llm.temperature}
-                    onChange={(e) => setLlm({ temperature: parseFloat(e.target.value) || 0 })}
-                  />
+                  <label className={labelClass}>Temperature</label>
+                  <input type="number" className={inputClass} min="0" max="2" step="0.1" value={llm.temperature} onChange={e => setLlm({ temperature: parseFloat(e.target.value) || 0 })} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  Custom Prompt (optional)
-                </label>
-                <textarea
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400 h-20 resize-none"
-                  placeholder="Override the default polish instructions..."
-                  value={llm.customPrompt}
-                  onChange={(e) => setLlm({ customPrompt: e.target.value })}
-                />
+                <label className={labelClass}>Custom Prompt (optional)</label>
+                <textarea className={`${inputClass} h-20 resize-none`} placeholder="Override the default polish instructions…" value={llm.customPrompt} onChange={e => setLlm({ customPrompt: e.target.value })} />
               </div>
             </div>
-          </section>
+          )}
 
-          {/* Translation */}
-          <section>
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
-               Translation
-            </h3>
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  Source
-                </label>
-                <select
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100"
-                  value={translate.sourceLang}
-                  onChange={(e) => setTranslate({ sourceLang: e.target.value })}
-                >
-                  <option value="auto">Auto Detect</option>
-                  <option value="zh">中文</option>
-                  <option value="en">English</option>
-                  <option value="ja">日本語</option>
-                  <option value="ko">한국어</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                  Target
-                </label>
-                <select
-                  className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100"
-                  value={translate.targetLang}
-                  onChange={(e) => setTranslate({ targetLang: e.target.value })}
-                >
-                  <option value="en">English</option>
-                  <option value="zh">中文</option>
-                  <option value="ja">日本語</option>
-                  <option value="ko">한국어</option>
-                  <option value="de">Deutsch</option>
-                  <option value="fr">Français</option>
-                  <option value="es">Español</option>
-                </select>
+          {activeTab === "translate" && (
+            <div className="space-y-5 animate-fade-in">
+              <h2 className="text-base font-semibold text-[#0F172A] dark:text-neutral-100 mb-4">Translation</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Source</label>
+                  <select className={selectClass} value={translate.sourceLang} onChange={e => setTranslate({ sourceLang: e.target.value })}>
+                    <option value="auto">Auto Detect</option>
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Target</label>
+                  <select className={selectClass} value={translate.targetLang} onChange={e => setTranslate({ targetLang: e.target.value })}>
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="de">Deutsch</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </section>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-between">
-          <button
-            onClick={() => setOpen(false)}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={saveSettings}
-            className="px-5 py-2 rounded-xl text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <Save className="w-4 h-4" />
-            Save
-          </button>
+          )}
         </div>
       </div>
     </div>
