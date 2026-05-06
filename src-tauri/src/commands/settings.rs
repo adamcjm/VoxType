@@ -24,3 +24,9 @@ pub async fn save_settings(
     tracing::info!("Settings saved and persisted");
     Ok(())
 }
+
+#[tauri::command]
+pub async fn needs_onboarding(state: State<'_, Arc<AppState>>) -> Result<bool, String> {
+    let config = state.inner().config.lock().map_err(|e| e.to_string())?;
+    Ok(config.needs_onboarding())
+}

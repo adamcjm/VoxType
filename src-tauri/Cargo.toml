@@ -46,6 +46,9 @@ hound = "3"
 # Async trait (needed for STT/LLM provider abstractions)
 async-trait = "0.1"
 
+# Environment variable loading
+dotenvy = "0.15"
+
 # SQLite for history storage
 rusqlite = { version = "0.32", features = ["bundled"] }
 

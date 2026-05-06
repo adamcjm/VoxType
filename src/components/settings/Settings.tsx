@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { X, Settings as SettingsIcon, Save } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
@@ -29,6 +29,14 @@ export default function Settings() {
       .catch(console.error);
   }, []);
 
+  // Check if this is first launch
+  const [isOnboarding, setIsOnboarding] = useState(false);
+  useEffect(() => {
+    invoke("needs_onboarding")
+      .then((needs) => setIsOnboarding(needs as boolean))
+      .catch(() => {});
+  }, []);
+
   // Save to Rust backend
   const saveSettings = useCallback(async () => {
     const config = { stt, llm, hotkey, translate, theme: "system" };
@@ -52,6 +60,11 @@ export default function Settings() {
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
               VoxType Settings
             </h2>
+            {isOnboarding && (
+              <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300">
+                First Time Setup
+              </span>
+            )}
           </div>
           <button
             onClick={() => setOpen(false)}
@@ -63,6 +76,19 @@ export default function Settings() {
 
         {/* Body */}
         <div className="p-6 space-y-8 overflow-y-auto max-h-[calc(85vh-120px)]">
+          {/* Welcome Banner */}
+          {isOnboarding && (
+            <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-900/50">
+              <p className="text-sm font-medium text-brand-800 dark:text-brand-300 mb-1">
+                Welcome to VoxType
+              </p>
+              <p className="text-xs text-brand-600 dark:text-brand-400 leading-relaxed">
+                Configure your Speech-to-Text and AI Polish providers below.
+                You'll need API keys — see the README for free registration links.
+              </p>
+            </div>
+          )}
+
           {/* Speech Recognition */}
           <section>
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">

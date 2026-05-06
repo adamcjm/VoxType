@@ -35,6 +35,21 @@ pub fn run() {
         .setup(|app| {
             tracing::info!("Tauri app setup complete");
 
+            // Check if onboarding is needed (no API keys configured)
+            let needs_onboarding = {
+                let state = app.state::<Arc<AppState>>();
+                let config = state.config.lock().unwrap();
+                config.needs_onboarding()
+            };
+
+            if needs_onboarding {
+                tracing::info!("No API keys configured — showing Settings panel");
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+
             #[cfg(debug_assertions)]
             {
                 if let Some(window) = app.get_webview_window("main") {
@@ -50,6 +65,7 @@ pub fn run() {
             commands::recording::list_audio_devices,
             commands::settings::get_settings,
             commands::settings::save_settings,
+            commands::settings::needs_onboarding,
             commands::history::get_history,
             commands::history::add_history_item,
             commands::history::remove_history_item,

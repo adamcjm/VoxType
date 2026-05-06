@@ -13,7 +13,7 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            config: Mutex::new(AppConfig::load().unwrap_or_default()),
+            config: Mutex::new(AppConfig::load()),
             audio_capture: Mutex::new(
                 AudioCapture::new().expect("Failed to initialize audio capture"),
             ),
