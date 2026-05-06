@@ -45,3 +45,7 @@ hound = "3"
 
 # Async trait (needed for STT/LLM provider abstractions)
 async-trait = "0.1"
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1", features = ["macros", "rt"] }

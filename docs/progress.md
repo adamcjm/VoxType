@@ -40,6 +40,24 @@
 - [x] Git repository initialized with 2 commits
 - [ ] Push to GitHub (requires `gh auth login`)
 
+## S2: STT Integration
+
+### Completed
+- [x] Shared HTTP helper: `transcribe_openai_compat()` for OpenAI-compatible APIs
+- [x] Groq Provider: real Whisper API call via multipart/form-data
+- [x] OpenAI Whisper Provider: real API call + Custom endpoint support
+- [x] Deepgram Provider: native API format with smart_format
+- [x] AudioFormat: mime_type() and extension() methods
+- [x] Error handling: HTTP errors, JSON parse errors, auth errors
+- [x] **3 new mock HTTP tests (wiremock) — 17 total, all passed**
+- [x] Rust: 0 errors, 0 warnings
+- [x] Frontend: builds successfully
+
+### Next Phase
+S3: Keyboard Output — Implement enigo keyboard simulation with IME bypass for real text input
+
+---
+
 ## S1: Audio Capture + Hotkey
 
 ### Completed
@@ -67,4 +85,4 @@
 - [ ] Hotkey Tauri event emission to frontend
 
 ### Next Phase
-S2: STT Integration - Implement actual Groq/OpenAI/Deepgram API calls
+S3: Keyboard Output — Implement enigo keyboard simulation with IME bypass for real text input
