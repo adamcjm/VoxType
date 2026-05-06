@@ -5,6 +5,7 @@ pub mod error;
 pub mod history;
 pub mod hotkey;
 pub mod llm;
+pub mod model_manager;
 pub mod output;
 pub mod pipeline;
 pub mod state;
@@ -54,6 +55,10 @@ pub fn run() {
             commands::history::remove_history_item,
             commands::clipboard::copy_to_clipboard,
             commands::clipboard::paste_text,
+            commands::model::list_models,
+            commands::model::download_model,
+            commands::model::delete_model,
+            commands::model::model_exists,
         ])
         .run(tauri::generate_context!())
         .expect("error while running VoxType");

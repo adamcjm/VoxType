@@ -49,6 +49,12 @@ async-trait = "0.1"
 # SQLite for history storage
 rusqlite = { version = "0.32", features = ["bundled"] }
 
+# Temp files for whisper subprocess
+tempfile = "3"
+
+# Stream utilities for model download
+futures-util = "0.3"
+
 [dev-dependencies]
 wiremock = "0.6"
 tokio = { version = "1", features = ["macros", "rt"] }

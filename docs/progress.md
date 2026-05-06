@@ -4,18 +4,33 @@
 
 ## Summary
 
-| Phase | Status | Start Date | End Date | Notes |
+| Phase | Status | Start Date | End Date | Tests |
 |-------|--------|------------|----------|-------|
-| S0: Scaffold | In Progress | 2026-05-06 | - | Project initialization |
-| S1: Audio + Hotkey | Not Started | - | - | |
-| S2: STT Integration | Not Started | - | - | |
-| S3: Keyboard Output | Not Started | - | - | |
-| S4: Capsule UI | Not Started | - | - | |
-| S5: LLM Polish | Not Started | - | - | |
-| S6: Settings + History | Not Started | - | - | |
-| S7: Local Whisper + Release | Not Started | - | - | |
+| S0: Scaffold | Completed | 2026-05-06 | 2026-05-06 | - |
+| S1: Audio + Hotkey | Completed | 2026-05-06 | 2026-05-06 | 14 |
+| S2: STT Integration | Completed | 2026-05-06 | 2026-05-06 | 17 |
+| S3: Keyboard Output | Completed | 2026-05-06 | 2026-05-06 | 20 |
+| S4: Capsule UI | Completed | 2026-05-06 | 2026-05-06 | 20 |
+| S5: LLM Polish | Completed | 2026-05-06 | 2026-05-06 | 25 |
+| S6: Settings + History | Completed | 2026-05-06 | 2026-05-06 | 28 |
+| S7: Local Whisper + Release | Completed | 2026-05-06 | 2026-05-06 | 28 |
 
-## S0: Project Scaffold
+## S7: Local Whisper + Release
+
+### Completed
+- [x] Local Whisper provider: whisper.cpp subprocess invocation
+- [x] Auto-detect binary (bundled or $PATH) and model files
+- [x] Model manager: 5 sizes, HuggingFace download with progress
+- [x] Model commands: list, download, delete, exists
+- [x] Bundle config: macOS/Win/Linux packaging with updater endpoint
+- [x] Platform-standard storage paths (config, data, models)
+- [x] **28 tests, 28 passed, 0 failed**
+- [x] Rust: 0 errors, 0 warnings
+- [x] Frontend: build OK
+
+---
+
+## S6: Settings + History
 
 ### Completed
 - [x] Created Tauri v2 project with React+TS template

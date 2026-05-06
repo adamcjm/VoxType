@@ -54,12 +54,31 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "resources": [],
+    "copyright": "MIT",
+    "category": "Utilities",
+    "shortDescription": "AI voice input for desktop",
+    "longDescription": "VoxType is an open-source AI voice input tool for desktop — a Typeless alternative. Press a hotkey, speak naturally, and get polished text at your cursor in any app.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "13.0",
+      "entitlements": null,
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null
+    }
   },
   "plugins": {
     "store": {},
     "shell": {
       "open": true
+    },
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/adamcjm/VoxType/releases/latest/download/latest.json"
+      ]
     }
   }
 }
