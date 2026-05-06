@@ -1,3 +1,3 @@
 mod pipeline;
 
-pub use pipeline::run_pipeline;
+pub use pipeline::{run_pipeline, PipelineResult};

@@ -14,8 +14,13 @@ pub async fn save_settings(
     state: State<'_, Arc<AppState>>,
     config: AppConfig,
 ) -> Result<(), String> {
+    // Save to disk first
+    config.save().map_err(|e| format!("Failed to persist settings: {}", e))?;
+
+    // Update in-memory
     let mut current = state.inner().config.lock().map_err(|e| e.to_string())?;
     *current = config;
-    tracing::info!("Settings saved");
+
+    tracing::info!("Settings saved and persisted");
     Ok(())
 }
