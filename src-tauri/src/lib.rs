@@ -103,6 +103,8 @@ pub fn run() {
             commands::model::download_model,
             commands::model::delete_model,
             commands::model::model_exists,
+            commands::model::fetch_stt_models,
+            commands::model::fetch_llm_models,
         ])
         .run(tauri::generate_context!())
         .expect("error while running VoxType");
