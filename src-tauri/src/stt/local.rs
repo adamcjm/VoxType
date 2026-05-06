@@ -38,29 +38,7 @@ impl LocalWhisperProvider {
 
     /// Path to model directory
     fn model_dir() -> std::path::PathBuf {
-        #[cfg(target_os = "macos")]
-        {
-            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-            std::path::PathBuf::from(format!(
-                "{}/Library/Application Support/com.voxtype.app/models",
-                home
-            ))
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            let appdata = std::env::var("APPDATA").unwrap_or_else(|_| "C:\\".into());
-            std::path::PathBuf::from(format!("{}\\VoxType\\models", appdata))
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            let data = std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-                format!("{}/.local/share", home)
-            });
-            std::path::PathBuf::from(format!("{}/voxtype/models", data))
-        }
+        crate::paths::models_dir()
     }
 
     /// Find an available model file

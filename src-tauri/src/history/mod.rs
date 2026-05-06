@@ -11,13 +11,8 @@ pub struct HistoryStore {
 
 impl HistoryStore {
     pub fn new() -> Result<Self, String> {
-        let db_path = get_db_path()?;
-
-        // Ensure parent directory exists
-        if let Some(parent) = std::path::Path::new(&db_path).parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create history directory: {}", e))?;
-        }
+        let _ = crate::paths::ensure_dirs();
+        let db_path = crate::paths::history_db();
 
         let conn = Connection::open(&db_path)
             .map_err(|e| format!("Failed to open history database: {}", e))?;
@@ -42,7 +37,7 @@ impl HistoryStore {
                 ON history(mode);"
         ).map_err(|e| format!("Failed to create history table: {}", e))?;
 
-        tracing::info!("History store initialized at {}", db_path);
+        tracing::info!("History store initialized at {}", db_path.display());
 
         Ok(Self {
             db: Mutex::new(conn),
@@ -138,34 +133,6 @@ impl HistoryStore {
         conn.execute("DELETE FROM history WHERE id = ?1", params![id])
             .map_err(|e| format!("Failed to delete history: {}", e))?;
         Ok(())
-    }
-}
-
-fn get_db_path() -> Result<String, String> {
-    let data_dir = dirs_data_dir()?;
-    Ok(format!("{}/history.db", data_dir))
-}
-
-fn dirs_data_dir() -> Result<String, String> {
-    #[cfg(target_os = "macos")]
-    {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-        Ok(format!("{}/Library/Application Support/com.voxtype.app", home))
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let appdata = std::env::var("APPDATA").unwrap_or_else(|_| "C:\\".into());
-        Ok(format!("{}\\VoxType", appdata))
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let xdg = std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
-            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-            format!("{}/.local/share", home)
-        });
-        Ok(format!("{}/voxtype", xdg))
     }
 }
 

@@ -68,9 +68,11 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    /// Load config with priority:
-    /// 1. `.env` file in project root (developer convenience)
-    /// 2. `config.json` in app data dir (user saved via Settings)
+    /// Load config from disk.
+    ///
+    /// Priority:
+    /// 1. `.env` file in project root → (developer convenience)
+    /// 2. `~/.VoxType/config.json` → (user saved via Settings)
     /// 3. Code defaults
     pub fn load() -> Self {
         // Try .env first (developer mode)
@@ -164,12 +166,13 @@ impl AppConfig {
         Some(config)
     }
 
-    /// Load from platform-specific config.json
+    /// Load from `~/.VoxType/config.json`
     fn from_json_file() -> Option<Self> {
-        let path = Self::config_path().ok()?;
+        let path = crate::paths::config_file();
+        let _ = crate::paths::ensure_dirs();
         let data = std::fs::read_to_string(&path).ok()?;
         let config: Self = serde_json::from_str(&data).ok()?;
-        tracing::info!("Config loaded from: {}", path);
+        tracing::info!("Config loaded from: {}", path.display());
         Some(config)
     }
 
@@ -192,40 +195,16 @@ impl AppConfig {
         stt_needs_key && llm_needs_key
     }
 
-    /// Save config to disk
+    /// Save to `~/.VoxType/config.json`
     pub fn save(&self) -> Result<(), String> {
-        let path = Self::config_path()?;
-        if let Some(parent) = std::path::Path::new(&path).parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create config dir: {}", e))?;
-        }
+        let _ = crate::paths::ensure_dirs();
+        let path = crate::paths::config_file();
         let data = serde_json::to_string_pretty(self)
             .map_err(|e| format!("Failed to serialize config: {}", e))?;
         std::fs::write(&path, &data)
             .map_err(|e| format!("Failed to write config: {}", e))?;
-        tracing::info!("Config saved to: {}", path);
+        tracing::info!("Config saved to: {}", path.display());
         Ok(())
-    }
-
-    fn config_path() -> Result<String, String> {
-        #[cfg(target_os = "macos")]
-        {
-            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-            Ok(format!("{}/Library/Application Support/com.voxtype.app/config.json", home))
-        }
-        #[cfg(target_os = "windows")]
-        {
-            let appdata = std::env::var("APPDATA").unwrap_or_else(|_| "C:\\".into());
-            Ok(format!("{}\\VoxType\\config.json", appdata))
-        }
-        #[cfg(target_os = "linux")]
-        {
-            let config = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-                format!("{}/.config", home)
-            });
-            Ok(format!("{}/voxtype/config.json", config))
-        }
     }
 }
 

@@ -7,6 +7,7 @@ pub mod hotkey;
 pub mod llm;
 pub mod model_manager;
 pub mod output;
+pub mod paths;
 pub mod pipeline;
 pub mod state;
 pub mod stt;

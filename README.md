@@ -604,13 +604,51 @@ pnpm tauri signer generate -- -w ~/.vox-type-updater-key
 
 ## Configuration
 
-### Config File Location
+### Data Directory
+
+All VoxType data lives in a single directory:
 
 | Platform | Path |
 |----------|------|
-| macOS | `~/Library/Application Support/com.voxtype.app/config.json` |
-| Windows | `%APPDATA%/VoxType/config.json` |
-| Linux | `$XDG_CONFIG_HOME/voxtype/config.json` |
+| macOS | `~/.VoxType/` |
+| Windows | `C:\Users\<user>\.VoxType\` |
+| Linux | `~/.VoxType/` |
+
+```
+~/.VoxType/
+├── config.json     # User settings (STT/LLM providers, hotkeys, theme)
+├── history.db      # SQLite transcription history
+└── models/          # Downloaded Whisper models
+    └── ggml-small.bin
+```
+
+### Config Options
+
+There are **two ways** to set up VoxType:
+
+#### Option A: `.env` file (developers, fastest)
+
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+pnpm tauri dev
+```
+
+`.env` takes priority over saved settings. Ideal for development.
+
+#### Option B: In-app Settings (recommended for users)
+
+On first launch, VoxType detects no API keys are configured and **auto-opens the Settings panel**. Fill in your provider + API key + model, click Save.
+
+Settings are persisted to `~/.VoxType/config.json` and reloaded on next launch.
+
+### Config File Path
+
+| Platform | Path |
+|----------|------|
+| macOS | `~/.VoxType/config.json` |
+| Windows | `C:\Users\<user>\.VoxType\config.json` |
+| Linux | `~/.VoxType/config.json` |
 
 ### Config Schema
 
