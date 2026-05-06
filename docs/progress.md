@@ -101,5 +101,6 @@ S3: Keyboard Output — Implement enigo keyboard simulation with IME bypass for 
 - [ ] OS-level global hotkey (CGEventTap/RegisterHotKey/XGrabKey)
 - [ ] Hotkey Tauri event emission to frontend
 
-### Next Phase
-S3: Keyboard Output — Implement enigo keyboard simulation with IME bypass for real text input
+---
+
+## S0: Project Scaffold
