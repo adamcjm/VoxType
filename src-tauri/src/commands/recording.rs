@@ -6,6 +6,24 @@ use crate::commands::history::HistoryItem;
 use tracing;
 
 #[tauri::command]
+pub async fn toggle_recording(
+    state: State<'_, Arc<AppState>>,
+) -> Result<String, String> {
+    let is_rec = {
+        let app = state.inner();
+        let capture = app.audio_capture.lock().map_err(|e| format!("Lock error: {}", e))?;
+        capture.is_recording()
+    };
+
+    if is_rec {
+        stop_recording(state).await
+    } else {
+        start_recording(state).await?;
+        Ok("recording".to_string())
+    }
+}
+
+#[tauri::command]
 pub async fn start_recording(
     state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {

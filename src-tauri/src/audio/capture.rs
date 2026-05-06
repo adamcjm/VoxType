@@ -183,6 +183,13 @@ impl AudioCapture {
 
         Ok((samples, duration_ms))
     }
+
+    pub fn is_recording(&self) -> bool {
+        self.is_recording
+            .lock()
+            .map(|r| *r)
+            .unwrap_or(false)
+    }
 }
 
 impl Drop for AudioCapture {

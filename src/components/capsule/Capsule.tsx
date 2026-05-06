@@ -2,8 +2,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRecordingStore } from "../../stores/recordingStore";
 import { useEffect, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import Waveform from "./Waveform";
-import StatusBadge from "./StatusBadge";
 
 export default function Capsule() {
   const isRecording = useRecordingStore((s) => s.isRecording);
@@ -12,132 +13,158 @@ export default function Capsule() {
   const error = useRecordingStore((s) => s.error);
   const duration = useRecordingStore((s) => s.duration);
 
-  const visible = isRecording || state !== "idle";
+  const setState = useRecordingStore((s) => s.setState);
+  const setTranscript = useRecordingStore((s) => s.setTranscript);
+  const setFinalText = useRecordingStore((s) => s.setFinalText);
+  const setError = useRecordingStore((s) => s.setError);
+  const setDuration = useRecordingStore((s) => s.setDuration);
 
-  // Show/hide the capsule window based on state
+  const visible = isRecording || state === "transcribing" || state === "done" || state === "error";
+
+  // Listen for Fn key toggle from Rust backend
+  useEffect(() => {
+    const unlisten = listen("hotkey:toggle", () => {
+      handleToggle();
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [state, isRecording]);
+
+  // Toggle recording: start or stop
+  const handleToggle = useCallback(async () => {
+    if (state === "idle") {
+      // Start recording
+      useRecordingStore.getState().startRecording();
+      try {
+        await invoke("start_recording");
+        // Start duration timer
+        const startTime = Date.now();
+        const timer = setInterval(() => {
+          setDuration(Date.now() - startTime);
+        }, 100);
+        (window as any).__voxTimer = timer;
+      } catch (e) {
+        setError(String(e));
+      }
+    } else if (isRecording) {
+      // Stop recording
+      useRecordingStore.getState().stopRecording();
+      clearInterval((window as any).__voxTimer);
+      try {
+        setState("transcribing");
+        const text: string = await invoke("stop_recording");
+        setFinalText(text);
+        setTranscript(text);
+        setState("done");
+      } catch (e) {
+        setError(String(e));
+      }
+    }
+  }, [state, isRecording]);
+
+  // Show/hide window
   useEffect(() => {
     const appWindow = getCurrentWindow();
     if (visible) {
       appWindow.show();
       appWindow.setAlwaysOnTop(true);
     } else {
-      // Auto-hide after 2s on completion
       if ((state as string) === "done") {
-        const timer = setTimeout(() => appWindow.hide(), 2000);
+        const timer = setTimeout(() => {
+          useRecordingStore.getState().reset();
+          appWindow.hide();
+        }, 2000);
         return () => clearTimeout(timer);
       }
       appWindow.hide();
     }
   }, [visible, state]);
 
-  // Handle click: dismiss capsule on done/error
-  const handleClick = useCallback(() => {
-    if (state === "done" || state === "error") {
-      getCurrentWindow().hide();
-    }
-  }, [state]);
-
-  const formatDuration = (ms: number) => {
-    const secs = Math.floor(ms / 1000);
-    const mins = Math.floor(secs / 60);
-    const remain = secs % 60;
-    return `${mins}:${remain.toString().padStart(2, "0")}`;
+  const formatTime = (ms: number) => {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -12, scale: 0.97 }}
+          initial={{ opacity: 0, y: -16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.97 }}
-          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          onClick={handleClick}
-          className="absolute top-[10%] left-1/2 -translate-x-1/2 cursor-default"
+          exit={{ opacity: 0, y: -8, scale: 0.98 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute top-[12%] left-1/2 -translate-x-1/2"
           data-tauri-drag-region
         >
-          <div
-            className={`
-              backdrop-blur-2xl rounded-2xl border shadow-2xl
-              min-w-[340px] max-w-[520px] px-5 py-4
-              transition-colors duration-300
-              ${state === "recording"
-                ? "bg-white/90 dark:bg-neutral-900/90 border-red-400/40 shadow-red-200/20"
-                : state === "transcribing" || state === "polishing"
-                  ? "bg-white/90 dark:bg-neutral-900/90 border-amber-400/40"
-                  : state === "error"
-                    ? "bg-white/90 dark:bg-neutral-900/90 border-red-500/60"
-                    : "bg-white/85 dark:bg-neutral-900/85 border-neutral-200/40 dark:border-neutral-700/40"
-              }`}
+          <div className={`
+            backdrop-blur-3xl rounded-full border shadow-lg
+            min-w-[280px] max-w-[480px] px-5 py-3
+            transition-all duration-300
+            ${isRecording
+              ? "bg-white/92 dark:bg-neutral-900/92 border-red-400/30 shadow-red-500/10"
+              : state === "transcribing"
+                ? "bg-white/92 dark:bg-neutral-900/92 border-amber-400/30"
+                : state === "error"
+                  ? "bg-white/92 dark:bg-neutral-900/92 border-red-500/40"
+                  : "bg-white/88 dark:bg-neutral-900/88 border-neutral-200/30 dark:border-neutral-700/30"
+            }`}
           >
-            {/* Header row: status + duration/waveform */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2.5">
-                <StatusBadge state={state} />
-                <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 select-none">
-                  {state === "recording" && "Recording"}
-                  {state === "transcribing" && "Transcribing..."}
-                  {state === "polishing" && "Polishing text..."}
-                  {state === "done" && "Done"}
-                  {state === "error" && "Error"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {state === "recording" && (
-                  <>
-                    <Waveform active />
-                    <span className="text-xs font-mono tabular-nums text-neutral-400 dark:text-neutral-500 select-none min-w-[40px] text-right">
-                      {formatDuration(duration)}
-                    </span>
-                  </>
-                )}
-                {state === "transcribing" && (
+            {/* Status row */}
+            <div className="flex items-center gap-3">
+              {/* Red dot + waveform when recording */}
+              {isRecording && (
+                <>
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                  </span>
+                  <Waveform active />
+                  <span className="text-sm font-mono tabular-nums text-neutral-500 dark:text-neutral-400 ml-auto">
+                    {formatTime(duration)}
+                  </span>
+                </>
+              )}
+
+              {/* Transcribing spinner */}
+              {state === "transcribing" && (
+                <>
                   <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                )}
-                {state === "polishing" && (
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full bg-brand-400"
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Transcribing...
+                  </span>
+                </>
+              )}
+
+              {/* Done: green check */}
+              {state === "done" && (
+                <>
+                  <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Done — text pasted
+                  </span>
+                </>
+              )}
+
+              {/* Error */}
+              {state === "error" && (
+                <>
+                  <span className="text-sm font-medium text-red-500">Error</span>
+                  <span className="text-sm text-red-400 truncate max-w-[300px]">{error}</span>
+                </>
+              )}
             </div>
 
-            {/* Transcript text */}
-            {transcript && (
+            {/* Transcript */}
+            {(transcript && (isRecording || state === "done")) && (
               <motion.p
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="text-[13px] leading-relaxed text-neutral-700 dark:text-neutral-300 max-h-36 overflow-y-auto select-text"
+                className="mt-2 text-[13px] leading-relaxed text-neutral-700 dark:text-neutral-300 max-h-32 overflow-y-auto"
               >
                 {transcript}
               </motion.p>
-            )}
-
-            {/* Error message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-2 flex items-start gap-2 p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50"
-              >
-                <span className="text-xs leading-relaxed text-red-700 dark:text-red-400">
-                  {error}
-                </span>
-              </motion.div>
-            )}
-
-            {/* Done: brief summary */}
-            {state === "done" && (
-              <p className="text-xs text-neutral-400 dark:text-neutral-500 select-none mt-1">
-                Text pasted at cursor — click to dismiss
-              </p>
             )}
           </div>
         </motion.div>
