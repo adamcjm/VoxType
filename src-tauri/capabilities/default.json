@@ -15,7 +15,6 @@
     "core:window:allow-set-skip-taskbar",
     "core:window:allow-center",
     "opener:default",
-    "store:default",
     "shell:allow-open"
   ]
 }

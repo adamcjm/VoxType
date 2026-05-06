@@ -1,11 +1,9 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{SampleRate, StreamConfig};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 use tracing;
 
 const SAMPLE_RATE: u32 = 16000;
-const CHANNELS: u16 = 1;
 
 #[derive(Debug)]
 enum AudioCommand {
@@ -42,11 +40,27 @@ impl AudioCapture {
 
         // Spawn dedicated audio thread that owns the cpal Stream (not Send on macOS)
         let thread_handle = std::thread::spawn(move || {
-            // Build the audio stream on this thread
-            let config = StreamConfig {
-                channels: CHANNELS,
-                sample_rate: SampleRate(SAMPLE_RATE),
-                buffer_size: cpal::BufferSize::Default,
+            // Get a supported config from the device
+            let supported_config = match device.default_input_config() {
+                Ok(cfg) => {
+                    let mut c: cpal::StreamConfig = cfg.into();
+                    // Try to set 16kHz, but fall back to device default
+                    let min_rate = c.sample_rate.0;
+                    if SAMPLE_RATE >= min_rate {
+                        c.sample_rate = cpal::SampleRate(SAMPLE_RATE);
+                    }
+                    c.channels = 1.min(c.channels);
+                    tracing::info!(
+                        "Audio config: {}kHz, {} channels",
+                        c.sample_rate.0 as f64 / 1000.0,
+                        c.channels
+                    );
+                    c
+                }
+                Err(e) => {
+                    tracing::error!("Failed to get default input config: {}", e);
+                    return;
+                }
             };
 
             // Inner buffers
@@ -58,7 +72,7 @@ impl AudioCapture {
             };
 
             let stream = match device.build_input_stream(
-                &config,
+                &supported_config,
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     if let Ok(recording) = active_recording.lock() {
                         if *recording {
